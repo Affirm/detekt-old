@@ -1,4 +1,5 @@
 rootProject.name = 'detekt'
+include 'affirm-custom-ruleset'
 include 'detekt-api'
 include 'detekt-core'
 include 'detekt-rules'
