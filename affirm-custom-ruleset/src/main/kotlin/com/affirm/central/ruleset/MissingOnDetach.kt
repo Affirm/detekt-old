@@ -16,19 +16,19 @@ class MissingOnDetach : Rule() {
 	override val issue = Issue(javaClass.simpleName, Severity.CodeSmell,
 			"${javaClass.simpleName} called onAttach but didn't call onDetach")
 
-	override fun visitClass(klass: KtClass) {
+    private var isPage = false
+
+    override fun visitClass(klass: KtClass) {
 		super.visitClass(klass)
 
-		if (klass.text.contains("onAttach(this)") && !klass.text.contains("onDetach()")) {
+		if (isPage
+                && klass.nameAsSafeName.toString().contains(Regex("Page$"))
+                && klass.text.contains("onAttach(this)") && !klass.text.contains("onDetach()")) {
 			report(CodeSmell(issue, Entity.from(klass)))
 		}
 	}
 
 	override fun visitPackageDirective(directive: KtPackageDirective) {
-		if (!directive.qualifiedName.contains("ui.page")) {
-			return
-		}
-
-		super.visitPackageDirective(directive)
-	}
+        isPage = directive.qualifiedName.contains("ui.page")
+    }
 }

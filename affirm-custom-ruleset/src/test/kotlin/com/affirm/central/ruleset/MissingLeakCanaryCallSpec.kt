@@ -6,8 +6,8 @@ import org.jetbrains.spek.api.dsl.describe
 import org.jetbrains.spek.api.dsl.it
 import org.jetbrains.spek.subject.SubjectSpek
 
-class MissingLeakCanaryCallSpec : SubjectSpek<MissingOnDetach>({
-    subject { MissingOnDetach() }
+class MissingLeakCanaryCallSpec : SubjectSpek<MissingLeakCanaryCall>({
+    subject { MissingLeakCanaryCall() }
 
     describe("a simple test") {
         it("should find one file that didn't call LeakCanary") {
