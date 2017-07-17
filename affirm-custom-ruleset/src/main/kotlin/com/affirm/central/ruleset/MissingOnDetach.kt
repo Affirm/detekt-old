@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.com.intellij.psi.PsiFile
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtPackageDirective
 
 class MissingOnDetach : Rule() {
 
@@ -18,12 +19,16 @@ class MissingOnDetach : Rule() {
 	override fun visitClass(klass: KtClass) {
 		super.visitClass(klass)
 
-		if (!klass.nameAsSafeName.toString().contains("Page")) {
-			return
-		}
-
 		if (klass.text.contains("onAttach(this)") && !klass.text.contains("onDetach()")) {
 			report(CodeSmell(issue, Entity.from(klass)))
 		}
+	}
+
+	override fun visitPackageDirective(directive: KtPackageDirective) {
+		if (!directive.qualifiedName.contains("ui.page")) {
+			return
+		}
+
+		super.visitPackageDirective(directive)
 	}
 }

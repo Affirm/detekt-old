@@ -6,9 +6,6 @@ import org.jetbrains.spek.api.dsl.describe
 import org.jetbrains.spek.api.dsl.it
 import org.jetbrains.spek.subject.SubjectSpek
 
-/**
- * @author Artur Bosch
- */
 class MissingOnDetachSpec : SubjectSpek<MissingOnDetach>({
 	subject { MissingOnDetach() }
 
@@ -34,8 +31,9 @@ class MissingOnDetachSpec : SubjectSpek<MissingOnDetach>({
 
 })
 
-val missingOnDetachCode: String = {
+private val missingOnDetachCode: String = {
 	"""
+			package one.ui.page
 			class MissingOnDetachPage : LinearLayout() {
 
 				override fun onAttachedToWindow() {
@@ -47,8 +45,9 @@ val missingOnDetachCode: String = {
 		"""
 }.invoke()
 
-val perfectCode: String = {
+private val perfectCode: String = {
 	"""
+			package two.ui.page
 			class MissingOnDetachPage : LinearLayout() {
 
 				override fun onAttachedToWindow() {
@@ -62,8 +61,9 @@ val perfectCode: String = {
 		"""
 }.invoke()
 
-val notAPageCode: String = {
+private val notAPageCode: String = {
 	"""
+			package one.ui.view
 			class MissingOnDetachView : LinearLayout() {
 
 				override fun onAttachedToWindow() {
