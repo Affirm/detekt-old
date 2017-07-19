@@ -12,10 +12,6 @@ class MissingLeakCanaryCall : Rule() {
     override fun visitClass(klass: KtClass) {
         super.visitClass(klass)
 
-        if (isExcluded(klass.annotationEntries)) {
-            return
-        }
-
         if (isPage
                 && klass.nameAsSafeName.toString().contains(Regex("Page$"))
                 && !klass.text.contains("refWatcher.watch(this)")) {

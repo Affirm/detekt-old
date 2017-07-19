@@ -7,6 +7,7 @@ import io.gitlab.arturbosch.detekt.api.RuleSetProvider
 class AffirmRuleSetProvider(override val ruleSetId: String = "affirm-rule-set") : RuleSetProvider {
 	override fun instance(config: Config): RuleSet {
 		return RuleSet(ruleSetId, listOf(
+				DisposableNotSaved(),
 				MissingOnDetach(),
 				MissingLeakCanaryCall()
 		))
