@@ -8,35 +8,40 @@ class DisposableNotSaved : Rule() {
             "${javaClass.simpleName} uses ProtocolGateway, but did not save all calls to disposables")
 
     // A map of disposable variable's name to whether they're saved
-    private val disposableMap = mutableMapOf<String, Boolean>()
-
+    private var disposableName: String? = null
+    private var protocolGatewayVarName: String? = null
+    private var isPresenter = false
     override fun visitClass(klass: KtClass) {
-        val usesProtocolGateway = klass.primaryConstructorParameters.firstOrNull {
-            it.text.contains("ProtocolGateway") } != null
+        if (!isPresenter) return
 
-        if (!usesProtocolGateway) return
-        super.visitClass(klass)
-
-        disposableMap.forEach { _, used ->
-            if (!used) report(CodeSmell(issue, Entity.from(klass)))
+        if (protocolGatewayVarName == null) {
+            protocolGatewayVarName = klass.primaryConstructorParameters.firstOrNull {
+                it.text.contains("ProtocolGateway") }?.name
         }
+
+        if (protocolGatewayVarName == null || protocolGatewayVarName!!.isEmpty()) return
+        super.visitClass(klass)
     }
 
     override fun visitProperty(property: KtProperty) {
-        super.visitProperty(property)
-        if (property.name != null && property.text.contains("Disposable")) {
-            disposableMap.put(property.name!!, false)
+        if (property.name != null && property.text.contains("CompositeDisposable")) {
+            disposableName = property.name
         }
     }
 
     override fun visitNamedFunction(function: KtNamedFunction) {
-        super.visitNamedFunction(function)
-        function.text.split("\n").forEach {
-            line ->
-                disposableMap.keys.forEach {
-                    if (line.contains(it) && (line.contains(".add") || line.contains("=")))
-                    disposableMap[it] = true
-                }
+
+        val hasCall = function.text.count(protocolGatewayVarName) > 0
+        val subscribed = function.text.contains(".subscribe")
+        val callSaved = function.text.contains(disposableName + ".add")
+
+        if (hasCall && subscribed && !callSaved) {
+            report(CodeSmell(issue, Entity.from(function)))
         }
+    }
+
+    override fun visitPackageDirective(directive: KtPackageDirective) {
+        val packageName = directive.qualifiedName
+        isPresenter = packageName.contains("ui.presenter")
     }
 }

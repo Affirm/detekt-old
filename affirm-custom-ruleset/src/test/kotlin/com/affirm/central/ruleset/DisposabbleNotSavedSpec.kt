@@ -11,7 +11,7 @@ class DisposabbleNotSavedSpec : SubjectSpek<DisposableNotSaved>({
 
     describe("a simple test") {
         it("should find one file that didn't save all calls to disposable") {
-            val ktFile = compileContentForTest(missingOnDetachCode)
+            val ktFile = compileContentForTest(missingSaveCallCode)
             subject.visit(ktFile)
             Assertions.assertThat(subject.findings).hasSize(1)
         }
@@ -23,7 +23,13 @@ class DisposabbleNotSavedSpec : SubjectSpek<DisposableNotSaved>({
         }
 
         it("should ignore classes that don't use protocolGateway") {
-            val ktFile = compileContentForTest(notAPageCode)
+            val ktFile = compileContentForTest(notUsingProtocolGatewayCode)
+            subject.visit(ktFile)
+            Assertions.assertThat(subject.findings).hasSize(0)
+        }
+
+        it("should ignore classes that aren't presenters") {
+            val ktFile = compileContentForTest(notPresenter)
             subject.visit(ktFile)
             Assertions.assertThat(subject.findings).hasSize(0)
         }
@@ -31,49 +37,76 @@ class DisposabbleNotSavedSpec : SubjectSpek<DisposableNotSaved>({
 
 })
 
-private val missingOnDetachCode: String = {
+private val missingSaveCallCode: String = {
     """
 			package one.ui.presenter
-			class MissingOnDetachPage(private val protocolGateway: protocolGateway) : LinearLayout() {
+			class MissingOnDetachPage(private val protocolGateway: ProtocolGateway) : LinearLayout() {
                 private val disposables = CompositeDisposable()
-                private val disposable: CompositeDisposable? = null
 
-				override fun onAttach() {
-					presenter.onAttach(this)
-				}
-
-				override fun onDetach() {
-                    disposable.add(this)
-				}
+			    fun fakeCall() {
+			        protocolGateway.callStuff()
+                    .subscribe()
+			    }
 			}
 		"""
 }.invoke()
 
 private val perfectCode: String = {
     """
-			package two.ui.page
-			class MissingOnDetachPage(private val protocolGateway: protocolGateway) : LinearLayout() {
+			package two.ui.presenter
+			class MissingOnDetachPage(private val protocolGateway: ProtocolGateway) : LinearLayout() {
                 private val disposables = CompositeDisposable()
-                private val disposable: CompositeDisposable? = null
 
-				override fun onAttach() {
-					presenter.onAttach(this)
-				}
+  fun startPollingVcn() {
+    stopPollingVcn()
 
-				override fun onDetache() {
-                   disposables.add()
-                   disposable = blah
-				}
+    vcn?.let {
+      protocolGateway.getCard(it.id).flatMap(
+          { vcnResponse ->
+            if (vcnResponse.status == ACTIVE) {
+              Single.error(NotWhatWasExpectedException())
+            } else {
+              Single.just(vcnResponse)
+            }
+          }).compose(rxPoll.pollSingle())
+          .subscribeOn(Schedulers.io())
+          .observeOn(AndroidSchedulers.mainThread())
+          .subscribe({
+            vcnSuccess(it)
+          }, {
+            Log.e("error polling vcn", it)
+          })
+          .let { vcnPollDisposables.add(it) }
+    }
+
+  }
 			}
 		"""
 }.invoke()
 
-private val notAPageCode: String = {
+private val notUsingProtocolGatewayCode: String = {
     """
 			package one.ui.view
 			class MissingOnDetachView : LinearLayout() {
 
 				override fun onAttachedToWindow() {
+					presenter.onAttach(this)
+				}
+
+				override fun onDetachedFromWindow() {
+					presenter.onDetach()
+				}
+			}
+		"""
+}.invoke()
+
+private val notPresenter: String = {
+    """
+			package one.ui.view
+			class MissingOnDetachView(private val protocolGateway: ProtocolGateway) : LinearLayout() {
+
+				override fun onAttachedToWindow() {
+                    protocolGateway.callStuff()
 					presenter.onAttach(this)
 				}
 
