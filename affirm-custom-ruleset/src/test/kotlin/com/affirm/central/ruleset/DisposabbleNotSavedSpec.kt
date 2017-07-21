@@ -22,12 +22,6 @@ class DisposabbleNotSavedSpec : SubjectSpek<DisposableNotSaved>({
             Assertions.assertThat(subject.findings).hasSize(0)
         }
 
-        it("should ignore classes that don't use protocolGateway") {
-            val ktFile = compileContentForTest(notUsingProtocolGatewayCode)
-            subject.visit(ktFile)
-            Assertions.assertThat(subject.findings).hasSize(0)
-        }
-
         it("should ignore classes that aren't presenters") {
             val ktFile = compileContentForTest(notPresenter)
             subject.visit(ktFile)
@@ -45,7 +39,10 @@ private val missingSaveCallCode: String = {
 
 			    fun fakeCall() {
 			        protocolGateway.callStuff()
-                    .subscribe()
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .doOnSubscribe { page?.setVerifyEmailTrouble(true) }
+                    .subscribe({})
 			    }
 			}
 		"""
@@ -57,45 +54,14 @@ private val perfectCode: String = {
 			class MissingOnDetachPage(private val protocolGateway: ProtocolGateway) : LinearLayout() {
                 private val disposables = CompositeDisposable()
 
-  fun startPollingVcn() {
-    stopPollingVcn()
-
-    vcn?.let {
-      protocolGateway.getCard(it.id).flatMap(
-          { vcnResponse ->
-            if (vcnResponse.status == ACTIVE) {
-              Single.error(NotWhatWasExpectedException())
-            } else {
-              Single.just(vcnResponse)
-            }
-          }).compose(rxPoll.pollSingle())
-          .subscribeOn(Schedulers.io())
-          .observeOn(AndroidSchedulers.mainThread())
-          .subscribe({
-            vcnSuccess(it)
-          }, {
-            Log.e("error polling vcn", it)
-          })
-          .let { vcnPollDisposables.add(it) }
-    }
-
-  }
-			}
-		"""
-}.invoke()
-
-private val notUsingProtocolGatewayCode: String = {
-    """
-			package one.ui.view
-			class MissingOnDetachView : LinearLayout() {
-
-				override fun onAttachedToWindow() {
-					presenter.onAttach(this)
-				}
-
-				override fun onDetachedFromWindow() {
-					presenter.onDetach()
-				}
+			    fun fakeCall() {
+                    protocolGateway.callStuff()
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .doOnSubscribe { page?.setVerifyEmailTrouble(true) }
+                    .subscribe()
+                    .let { disposables.add(it) }
+			    }
 			}
 		"""
 }.invoke()
