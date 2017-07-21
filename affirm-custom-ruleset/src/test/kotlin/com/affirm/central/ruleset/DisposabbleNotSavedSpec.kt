@@ -23,7 +23,7 @@ class DisposabbleNotSavedSpec : SubjectSpek<DisposableNotSaved>({
         }
 
         it("should ignore classes that don't use protocolGateway") {
-            val ktFile = compileContentForTest(notUsingProtocolGatewayCode)
+            val ktFile = compileContentForTest(notSubscribingCode)
             subject.visit(ktFile)
             Assertions.assertThat(subject.findings).hasSize(0)
         }
@@ -45,7 +45,10 @@ private val missingSaveCallCode: String = {
 
 			    fun fakeCall() {
 			        protocolGateway.callStuff()
-                    .subscribe()
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .doOnSubscribe { page?.setVerifyEmailTrouble(true) }
+                    .subscribe({})
 			    }
 			}
 		"""
@@ -57,40 +60,26 @@ private val perfectCode: String = {
 			class MissingOnDetachPage(private val protocolGateway: ProtocolGateway) : LinearLayout() {
                 private val disposables = CompositeDisposable()
 
-  fun startPollingVcn() {
-    stopPollingVcn()
-
-    vcn?.let {
-      protocolGateway.getCard(it.id).flatMap(
-          { vcnResponse ->
-            if (vcnResponse.status == ACTIVE) {
-              Single.error(NotWhatWasExpectedException())
-            } else {
-              Single.just(vcnResponse)
-            }
-          }).compose(rxPoll.pollSingle())
-          .subscribeOn(Schedulers.io())
-          .observeOn(AndroidSchedulers.mainThread())
-          .subscribe({
-            vcnSuccess(it)
-          }, {
-            Log.e("error polling vcn", it)
-          })
-          .let { vcnPollDisposables.add(it) }
-    }
-
-  }
+			    fun fakeCall() {
+                    protocolGateway.callStuff()
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .doOnSubscribe { page?.setVerifyEmailTrouble(true) }
+                    .subscribe()
+                    .let { disposables.add(it) }
+			    }
 			}
 		"""
 }.invoke()
 
-private val notUsingProtocolGatewayCode: String = {
+private val notSubscribingCode: String = {
     """
 			package one.ui.view
 			class MissingOnDetachView : LinearLayout() {
 
 				override fun onAttachedToWindow() {
 					presenter.onAttach(this)
+                    protocolGateway.callStuff()
 				}
 
 				override fun onDetachedFromWindow() {

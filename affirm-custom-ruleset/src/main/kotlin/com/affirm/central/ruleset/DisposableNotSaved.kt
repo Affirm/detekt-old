@@ -8,36 +8,38 @@ class DisposableNotSaved : Rule() {
             "${javaClass.simpleName} uses ProtocolGateway, but did not save all calls to disposables")
 
     // A map of disposable variable's name to whether they're saved
-    private var disposableName: String? = null
-    private var protocolGatewayVarName: String? = null
+    private val disposableNames = mutableSetOf<String>()
     private var isPresenter = false
     override fun visitClass(klass: KtClass) {
         if (!isPresenter) return
-
-        if (protocolGatewayVarName == null) {
-            protocolGatewayVarName = klass.primaryConstructorParameters.firstOrNull {
-                it.text.contains("ProtocolGateway") }?.name
-        }
-
-        if (protocolGatewayVarName == null || protocolGatewayVarName!!.isEmpty()) return
         super.visitClass(klass)
     }
 
     override fun visitProperty(property: KtProperty) {
-        if (property.name != null && property.text.contains("CompositeDisposable")) {
-            disposableName = property.name
+        if (property.name != null && property.text.contains("Disposable")) {
+            disposableNames.add(property.name ?: "")
         }
     }
 
     override fun visitNamedFunction(function: KtNamedFunction) {
+        val hasCall = function.text.contains("subscribeOn")
+                && function.text.contains("observeOn")
+                && function.text.contains("subscribe(")
 
-        val hasCall = function.text.count(protocolGatewayVarName) > 0
-        val subscribed = function.text.contains(".subscribe")
-        val callSaved = function.text.contains(disposableName + ".add")
 
-        if (hasCall && subscribed && !callSaved) {
+        val callSaved = function.text.split("\n")
+                .any {
+                    line ->
+                    disposableNames.any {
+                        line.contains(it) && (line.contains(".add") || line.contains("="))
+                    }
+                }
+
+        if (hasCall && !callSaved) {
             report(CodeSmell(issue, Entity.from(function)))
         }
+
+        super.visitNamedFunction(function)
     }
 
     override fun visitPackageDirective(directive: KtPackageDirective) {
