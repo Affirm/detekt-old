@@ -31,7 +31,7 @@ class DisposableNotSaved : Rule() {
                 .any {
                     line ->
                     disposableNames.any {
-                        line.contains(it) && (line.contains(".add") || line.contains("="))
+                        line.contains("$it = ") || line.contains("$it.add")
                     }
                 }
 

@@ -22,12 +22,6 @@ class DisposabbleNotSavedSpec : SubjectSpek<DisposableNotSaved>({
             Assertions.assertThat(subject.findings).hasSize(0)
         }
 
-        it("should ignore classes that don't use protocolGateway") {
-            val ktFile = compileContentForTest(notSubscribingCode)
-            subject.visit(ktFile)
-            Assertions.assertThat(subject.findings).hasSize(0)
-        }
-
         it("should ignore classes that aren't presenters") {
             val ktFile = compileContentForTest(notPresenter)
             subject.visit(ktFile)
@@ -68,23 +62,6 @@ private val perfectCode: String = {
                     .subscribe()
                     .let { disposables.add(it) }
 			    }
-			}
-		"""
-}.invoke()
-
-private val notSubscribingCode: String = {
-    """
-			package one.ui.view
-			class MissingOnDetachView : LinearLayout() {
-
-				override fun onAttachedToWindow() {
-					presenter.onAttach(this)
-                    protocolGateway.callStuff()
-				}
-
-				override fun onDetachedFromWindow() {
-					presenter.onDetach()
-				}
 			}
 		"""
 }.invoke()
